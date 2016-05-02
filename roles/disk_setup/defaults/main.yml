@@ -1,0 +1,6 @@
+storage_block_devices:
+  - /dev/vdb
+
+brick_directory: /data
+
+fs_type: xfs

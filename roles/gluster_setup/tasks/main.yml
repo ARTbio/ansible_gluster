@@ -1,0 +1,24 @@
+# We establish a list of directories (=mounted disks) in the bricks directory
+- find: paths={{ brick_directory }} file_type=directory
+  register: found_paths
+
+- set_fact: bricks="{{ found_paths.files | map(attribute='path') | list }}"
+
+# We need a list of hosts excluding the current host to initiate peer probing
+- set_fact: other_group_members={{ groups.all | symmetric_difference( [ ansible_fqdn ] ) }}
+- set_fact: comma_seperated_group_members={{ groups.all |join(',') }}
+
+# We create a trusted pool
+- command: gluster peer probe {{ item }}
+  with_items: "{{ other_group_members }}"
+
+- file: path={{ item }}/volume0 state=directory
+  with_items: "{{ bricks }}"
+
+- name: create gluster volume
+  gluster_volume: state=present replicas=2 name=test1 bricks={{ item }}/volume0 cluster={{ comma_seperated_group_members }}
+  run_once: true
+  with_items: "{{ bricks }}"
+
+- name: start volume
+  gluster_volume: name=test1 state=started

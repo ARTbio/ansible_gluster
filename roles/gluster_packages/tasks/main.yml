@@ -1,0 +1,11 @@
+# Install system packages
+- name: Install software-commons package
+  apt: pkg={{ item }} state=present install_recommends=no
+  with_items:
+    - software-properties-common
+
+- name: Add custom gluster PPA
+  apt_repository: repo="ppa:gluster/glusterfs-3.7" update_cache=yes
+
+- name: install gluster
+  apt: pkg=glusterfs-server install_recommends=yes

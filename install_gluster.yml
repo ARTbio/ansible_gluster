@@ -1,0 +1,8 @@
+- hosts: all
+  roles:
+  - role: gluster_packages
+    become: yes
+  - role: disk_setup
+    become: yes
+  - role: gluster_setup
+    become: yes

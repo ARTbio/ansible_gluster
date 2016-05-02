@@ -1,0 +1,1 @@
+- raw: sudo apt-get update -qq && sudo apt-get install -y python-minimal

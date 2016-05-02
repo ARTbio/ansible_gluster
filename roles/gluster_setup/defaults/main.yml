@@ -1,0 +1,3 @@
+brick_directory: /data
+volumes:
+  - volume0
