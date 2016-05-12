@@ -6,3 +6,4 @@
     become: yes
   - role: gluster_setup
     become: yes
+    tags: gluster

@@ -1,3 +1,16 @@
 brick_directory: /data
+replicates:
+  replicate1:
+    server1:
+      - brick1
+      - brick2
+      - brick3
+      - brick4
+  replicate2:
+    server2:
+      - brick4
+      - brick3
+      - brick2
+      - brick1
 volumes:
   - volume0

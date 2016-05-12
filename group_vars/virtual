@@ -1,0 +1,27 @@
+brick_directory: /data
+rep_set:
+  - replicate_1:
+      - art-storage1-virt.maas:
+        - brick1
+        - brick2
+        - brick3
+        - brick4
+      - art-storage2-virt.maas:
+        - brick1
+        - brick2
+        - brick3
+        - brick4
+  - replicate_2:
+      - art-storage3-virt.maas:
+        - brick1
+        - brick2
+        - brick3
+        - brick4
+      - art-storage4-virt.maas:
+        - brick1
+        - brick2
+        - brick3
+        - brick4
+
+#volumes:
+#  - volume0
