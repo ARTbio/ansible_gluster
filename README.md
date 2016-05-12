@@ -28,8 +28,18 @@ export MAAS_API_URL=http://<my_maas_server>/MAAS/api/1.0
 ```
 
 How to use the playbook:
+------
 
 ```
 ansible-playbook --private-key <path_to_ssh_key_for_maas> -i ansible_maas_dynamic_inventory.py -u <maas_username> install_gluster.yml
 ```
 By default this will create a distributed and replicated gluster volume test1, so you need at least 4 machines in MAAS to use this playbook.
+
+Troubleshooting
+------
+
+To test if your nodes in MAAS can be reached, type:
+
+```
+ansible --private-key <your_private_key> -i ansible_maas_dynamic_inventory.py all -m ping -u ubuntu -vvvv
+```

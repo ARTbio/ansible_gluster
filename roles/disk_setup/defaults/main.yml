@@ -1,6 +1,5 @@
-storage_block_devices:
-  - /dev/vdb
-
+storage_block_devices: "{{ facter_blockdevices.split(',') }}"
+brick_size: 180
 brick_directory: /data
 
-fs_type: xfs
+fs_type: btrfs

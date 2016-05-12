@@ -1,8 +1,10 @@
 # Install system packages
-- name: Install software-commons package
+- name: Install required package for gluster
   apt: pkg={{ item }} state=present install_recommends=no
   with_items:
     - software-properties-common
+    - thin-provisioning-tools
+    - btrfs-tools
 
 - name: Add custom gluster PPA
   apt_repository: repo="ppa:gluster/glusterfs-3.7" update_cache=yes

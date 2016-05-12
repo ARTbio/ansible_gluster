@@ -1,9 +1,10 @@
-# Format disks, force=no will not overwrite a device that already contains a filesystem
-- name: Format disks
-  filesystem: fstype={{ fs_type }} dev={{ item }} force=no
-  with_items: "{{ storage_block_devices }}"
+#Run disk setup only if disk doesn't contain any partitions
+- set_fact:
 
-# Mount up device
-- mount: name="{{ brick_directory }}/{{ item | basename }}" src={{ item }} fstype={{ fs_type }} state=mounted
+- include: setup_disk.yml
   with_items: "{{ storage_block_devices }}"
+  loop_control:
+    loop_var: device
+  when: (ansible_devices[device]['partitions'] | length == 0)
+  tags: partition
 
