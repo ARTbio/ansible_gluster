@@ -1,26 +1,25 @@
 
-# We establish a list of directories (=mounted disks) in the bricks directory
-- find: paths={{ brick_directory }} file_type=directory
-  register: found_paths
+# We establish a list of mounts, where each mount becomes a brick
 
-- set_fact: brick_dirs="{{ found_paths.files | map(attribute='path') | list }}"
+- set_fact: brick_dirs="{{ ansible_mounts | map(attribute='mount') | list | difference( root ) }}"
 
-- set_fact: bricks="{% set sep = joiner(",") %}{% for rep_d in rep_set %}{% for rep, rep_list in rep_d.iteritems() %}{% for host_d in rep_list %}{% for host, brick_list in host_d.iteritems() %}{% for brick in brick_list %}{{ sep() }}{{ rep }}:{{ brick_directory }}/{{ brick }}/volume:{{ host }}{% endfor %}{% endfor %}{% endfor %}{% endfor %}{% endfor %}"
+# We need a list of hosts initiate peer probing
+
+- set_fact: comma_seperated_group_members={{ groups[volume_group] |join(',') }}
   run_once: true
-  tags: debug
 
-# We need a list of hosts excluding the current host to initiate peer probing
-- set_fact: comma_seperated_group_members={{ groups.all |join(',') }}
-
-
-- file: path={{ item}}/volume state=directory
+- file: path={{ item}}/volume0 state=directory
   with_items: "{{ brick_dirs }}"
 
-- name: create gluster volume
-  gluster_volume: state=present replicas=2 name=test1 bricks={{ item }} cluster=art-storage1-virt.maas,art-storage2-virt.maas,art-storage3-virt.maas,art-storage4-virt.maas
-#  gluster_volume: state=present replicas=2 name=test1 bricks={{ item }} cluster={{ comma_seperated_group_members }}
+- command: gluster peer probe {{ item }}
+  with_items: "{{ groups[volume_group] | difference( [ ansible_fqdn ] ) }}"
   run_once: true
-  with_items: "{{ bricks }}"
+  ignore_errors: true
+
+- name: create gluster volume
+  gluster_volume: state=present replicas={{ replica_count}} name=test1 replicates={{ rep_set }} cluster={{ comma_seperated_group_members }}
+  run_once: true
 
 - name: start volume
   gluster_volume: name=test1 state=started
+  run_once: true

@@ -1,27 +1,34 @@
 brick_directory: /data
 rep_set:
   - replicate_1:
-      - art-storage1-virt.maas:
-        - brick1
-        - brick2
-        - brick3
-        - brick4
-      - art-storage2-virt.maas:
-        - brick1
-        - brick2
-        - brick3
-        - brick4
+      - "art-storage1-virt.maas:/data/vdb/brick1/volume0"
+      - "art-storage1-virt.maas:/data/vdb/brick2/volume0"
+      - "art-storage1-virt.maas:/data/vdb/brick3/volume0"
+      - "art-storage1-virt.maas:/data/vdb/brick4/volume0"
+      - "art-storage2-virt.maas:/data/vdb/brick1/volume0"
+      - "art-storage2-virt.maas:/data/vdb/brick2/volume0"
+      - "art-storage2-virt.maas:/data/vdb/brick3/volume0"
+      - "art-storage2-virt.maas:/data/vdb/brick4/volume0"
   - replicate_2:
-      - art-storage3-virt.maas:
-        - brick1
-        - brick2
-        - brick3
-        - brick4
-      - art-storage4-virt.maas:
-        - brick1
-        - brick2
-        - brick3
-        - brick4
+      - "art-storage3-virt.maas:/data/vdb/brick1/volume0"
+      - "art-storage3-virt.maas:/data/vdb/brick2/volume0"
+      - "art-storage3-virt.maas:/data/vdb/brick3/volume0"
+      - "art-storage3-virt.maas:/data/vdb/brick4/volume0"
+      - "art-storage4-virt.maas:/data/vdb/brick1/volume0"
+      - "art-storage4-virt.maas:/data/vdb/brick2/volume0"
+      - "art-storage4-virt.maas:/data/vdb/brick3/volume0"
+      - "art-storage4-virt.maas:/data/vdb/brick4/volume0"
+  - replicate_3:
+      - "umr-storage1-virt.maas:/data/vdb/brick1/volume0"
+      - "umr-storage1-virt.maas:/data/vdb/brick2/volume0"
+      - "umr-storage1-virt.maas:/data/vdc/brick1/volume0"
+      - "umr-storage1-virt.maas:/data/vdc/brick2/volume0"
+      - "umr-storage1-virt.maas:/data/vdd/brick1/volume0"
+      - "umr-storage1-virt.maas:/data/vdd/brick2/volume0"
+      - "umr-storage2-virt.maas:/data/vdb/brick1/volume0"
+      - "umr-storage2-virt.maas:/data/vdb/brick2/volume0"
 
+replica_count: 3
+volume_group: virtual
 #volumes:
 #  - volume0

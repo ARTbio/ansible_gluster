@@ -4,40 +4,26 @@
 - set_fact: size={{ hostvars[inventory_hostname][size_string]//1048576 - 12}}
 - set_fact: brick_number={{ size|int//brick_size|int }}
 
-- name: unmount up device
-  mount: name="{{ brick_directory }}/brick{{ item }}"
-         src=/dev/vg_{{device}}/brick{{ item }}
-         fstype={{ fs_type }}
-         opts=compress
-         state=unmounted
-  with_sequence: count="{{ brick_number }}"
-  when: remove_vg is defined and remove_vg|bool
-
-- name: remove thin volumes
-  lvol: vg=vg_{{ device }} lv=brick{{ item }} thinpool=thinpool size="{{brick_size}}" state=absent force=yes
-  with_sequence: count="{{ brick_number }}"
-  when: remove_vg is defined and remove_vg|bool
-
-- name: Remove volume groups
-  lvg: vg=vg_{{ device }} pvs=/dev/{{ device }} state=absent force=yes
-  when: remove_vg is defined and remove_vg|bool
-
 - name: Create volume groups
   lvg: vg=vg_{{ device }} pvs=/dev/{{ device }}
 
+- stat: path=/dev/mapper/vg_{{ device }}-thinpool
+  register: thinpool_path
+
 - name: Create thin pool
-  lvol: vg=vg_{{ device }} thinpool=thinpool size=100%FREE
+  lvol: vg=vg_{{ device }} thinpool=thinpool size=100%FREE state=present
+  when: thinpool_path.stat.exists == False
 
 - name: Create thin volumes
-  lvol: vg=vg_{{ device }} lv=brick{{ item }} thinpool=thinpool size="{{brick_size}}"
+  lvol: vg=vg_{{ device }} lv=brick{{ item }} thinpool=thinpool size="{{brick_size}}" state=present
   with_sequence: count="{{ brick_number }}"
 
 - name: Format disks
   filesystem: fstype={{ fs_type }} dev=/dev/vg_{{ device }}/brick{{ item }} force=no
   with_sequence: count="{{ brick_number }}"
 
-- name: Mount up device
-  mount: name="{{ brick_directory }}/brick{{ item }}"
+- name: Mount device
+  mount: name="{{ brick_directory }}/{{ device }}/brick{{ item }}"
          src=/dev/vg_{{device}}/brick{{ item }}
          fstype={{ fs_type }}
          opts=compress

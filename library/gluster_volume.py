@@ -134,6 +134,7 @@ EXAMPLES = """
 
 import time
 import socket
+import itertools
 
 glusterbin = ''
 
@@ -260,7 +261,7 @@ def probe_all_peers(hosts, peers, myhostname):
         if host not in peers:
             probe(host, myhostname)
 
-def create_volume(name, stripe, replica, transport, hosts, bricks, force):
+def create_volume(name, stripe, replica, transport, bricks, force):
     args = [ 'volume', 'create' ]
     args.append(name)
     if stripe:
@@ -271,48 +272,10 @@ def create_volume(name, stripe, replica, transport, hosts, bricks, force):
         args.append(str(replica))
     args.append('transport')
     args.append(transport)
-    args.extend(parse_hosts_bricks(hosts, bricks, True))
+    args.extend(bricks)
     if force:
         args.append('force')
     run_gluster(args)
-
-def parse_hosts_bricks(hosts, bricks, explicit_map):
-    """
-    Takes bricks (brick_paths) and checks if an explicit assignment to a replicate has been made.
-    If replicate-brick assignment exists, order the list of bricks to honor the assignment.
-    :param hosts: list generated from clusters parameter
-    :param bricks: list generated from bricks parameter
-    :param explicit_map: boolean, whether an explicit assignment of bricks to replicates exists.
-    :return args: list of command to append to the `volume create command`
-    """
-    replicate_d = dict()
-    args = []
-    if explicit_map and bricks[0].startswith("replicate_"):  # explicit mapping of host:brick to replicate
-        for brick_line in bricks:
-            rep, brick, host = parse_replicate_line(brick_line)
-            if rep in replicate_d:
-                replicate_d[rep].append((brick, host))
-            else:
-                replicate_d[rep] = [(brick, host)]
-        for brick_host_list in replicate_d.values():
-                for tup in brick_host_list:
-                    brick, host = tup
-                    args.append("%s:%s" % (host, brick) )
-                    # TODO: sanity checking: does args match the specified replicate count?
-    else:
-        for brick in bricks:
-            for host in hosts:
-                args.append(('%s:%s' % (host, brick)))
-    return args
-
-
-def parse_replicate_line(line):
-    global module
-    try:
-        replicate, brick, server = line.split(":")
-    except ValueError:
-        module.fail_json(msg="brick name starts with `replicate_`, but does not contain replicate, brick and server seperated by `:`")
-    return (replicate, brick, server)
 
 def start_volume(name):
     run_gluster([ 'volume', 'start', name ])
@@ -339,6 +302,25 @@ def enable_quota(name):
 def set_quota(name, directory, value):
     run_gluster([ 'volume', 'quota', name, 'limit-usage', directory, value ])
 
+def rep_set_to_all_bricks(replicates, replicas, module):
+    """
+    rep_set should be a a list of replicates with length equal to replicas. replicates are dicts with lists of hosts,
+    and each host item is a list of bricks, e.g.
+    replicates = [{"replicate_1": ["host1:disk1", "host1:disk2", "host2:disk1", "host2:disk2"]}, {"replicate_2": ["host3:disk1", "host3:disk2", "host4:disk1", "host4:disk2"]}, {"replicate_3": ["host5:disk1", "host5:disk2", "host6:disk1", "host6:disk2"]}]
+    :return:
+    """
+    replicate_count = len(replicates)
+    if replicate_count != replicas:
+        module.fail_json("Number of replicates (%d) is not equal to replicas count (%d)" % (replicate_count, replicas))
+    bricks_per_replicate = []
+    for replicate_d in replicates:
+        for brick_list in replicate_d.values():
+            bricks_per_replicate.append(brick_list)
+    if len(set(map(len, bricks_per_replicate))) != 1:
+        module.fail_json("Number of bricks is not equal equal across replicate_set")
+    all_bricks = zip(*bricks_per_replicate)
+    all_bricks = list(itertools.chain.from_iterable(all_bricks))  # Flatten list of brick tuples
+    return all_bricks
 
 def main():
     ### MAIN ###
@@ -354,6 +336,7 @@ def main():
             replicas=dict(required=False, default=None, type='int'),
             transport=dict(required=False, default='tcp', choices=[ 'tcp', 'rdma', 'tcp,rdma' ]),
             bricks=dict(required=False, default=None, aliases=['brick']),
+            replicates=dict(requried=False, type='list', default=None),
             start_on_create=dict(required=False, default=True, type='bool'),
             rebalance=dict(required=False, default=False, type='bool'),
             options=dict(required=False, default={}, type='dict'),
@@ -372,6 +355,7 @@ def main():
     volume_name = module.params['name']
     cluster= module.params['cluster']
     brick_paths = module.params['bricks']
+    replicates = module.params['replicates']
     stripes = module.params['stripes']
     replicas = module.params['replicas']
     transport = module.params['transport']
@@ -391,10 +375,19 @@ def main():
     if cluster == None or cluster[0] == '':
         cluster = [myhostname]
 
-    if brick_paths != None and "," in brick_paths:
-        brick_paths = brick_paths.split(",")
-    else:
-        brick_paths = [brick_paths]
+    if replicates:
+        all_bricks = rep_set_to_all_bricks(replicates, replicas, module)
+
+    else:  # get list of (user-specified) bricks
+        all_bricks = []
+        if brick_paths != None and "," in brick_paths:
+            brick_paths = brick_paths.split(",")
+        else:
+            brick_paths = [brick_paths]
+        for node in cluster:
+            for brick_path in brick_paths:
+                brick = '%s:%s' % (node, brick_path)
+                all_bricks.append(brick)
 
     options = module.params['options']
     quota = module.params['quota']
@@ -421,7 +414,7 @@ def main():
 
         # create if it doesn't exist
         if volume_name not in volumes:
-            create_volume(volume_name, stripes, replicas, transport, cluster, brick_paths, force)
+            create_volume(volume_name, stripes, replicas, transport, all_bricks, force)
             volumes = get_volumes()
             changed = True
 
@@ -433,13 +426,9 @@ def main():
             # switch bricks
             new_bricks = []
             removed_bricks = []
-            all_bricks = []
-            for node in cluster:
-                for brick_path in brick_paths:
-                    brick = '%s:%s' % (node, brick_path)
-                    all_bricks.append(brick)
-                    if brick not in volumes[volume_name]['bricks']:
-                        new_bricks.append(brick)
+            for brick in all_bricks:
+                if brick not in volumes[volume_name]['bricks']:
+                    new_bricks.append(brick)
 
             # this module does not yet remove bricks, but we check those anyways
             for brick in volumes[volume_name]['bricks']:

@@ -1,5 +1,9 @@
 #Run disk setup only if disk doesn't contain any partitions
-- set_fact:
+- include: remove_volume.yml
+  when: remove_vg is defined and remove_vg|bool
+  with_items: "{{ storage_block_devices }}"
+  loop_control:
+    loop_var: device
 
 - include: setup_disk.yml
   with_items: "{{ storage_block_devices }}"

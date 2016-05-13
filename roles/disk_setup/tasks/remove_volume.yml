@@ -1,0 +1,18 @@
+- set_fact: size_string="facter_blockdevice_{{ device }}_size"
+- set_fact: size={{ hostvars[inventory_hostname][size_string]//1048576 - 12}}
+- set_fact: brick_number={{ size|int//brick_size|int }}
+
+- name: unmount device
+  mount: name="{{ brick_directory }}/brick{{ item }}"
+         src=/dev/vg_{{device}}/brick{{ item }}
+         fstype={{ fs_type }}
+         opts=compress
+         state=unmounted
+  with_sequence: count="{{ brick_number }}"
+
+- name: remove thin volumes
+  lvol: vg=vg_{{ device }} lv=brick{{ item }} thinpool=thinpool size="{{brick_size}}" state=absent force=yes
+  with_sequence: count="{{ brick_number }}"
+
+- name: Remove volume groups
+  lvg: vg=vg_{{ device }} pvs=/dev/{{ device }} state=absent force=yes
